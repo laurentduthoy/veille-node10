@@ -1,17 +1,20 @@
 const express = require('express');
-const app = express();
-app.use(express.static('public'));
-const MongoClient = require('mongodb').MongoClient;
+const fs = require('fs')
 const util = require("util");
-const i18n = require('i18n');
-const ObjectID = require('mongodb').ObjectID;
-
-/* on associe le moteur de vue au module «ejs» */
+const app = express();
+const server = require('http').createServer(app);
+const io = require('./modules/chat_socket').listen(server);
+const peupler = require('./modules/peupler')
 const bodyParser= require('body-parser')
+const MongoClient = require('mongodb').MongoClient // le pilote MongoDB
+const ObjectID = require('mongodb').ObjectID;
 app.use(bodyParser.urlencoded({extended: true}))
+/* on associe le moteur de vue au module «ejs» */
+app.use(express.static('public'));
 
-let cookieParser = require('cookie-parser')
-app.use(cookieParser())
+app.set('view engine', 'ejs'); // générateur de template
+
+const i18n = require('i18n');
 
 i18n.configure({ 
 
@@ -20,8 +23,6 @@ i18n.configure({
    directory : __dirname + '/locales' })
 app.use(i18n.init);
 
-
-app.set('view engine', 'ejs'); // générateur de template
 let db
 
 
@@ -29,7 +30,7 @@ MongoClient.connect('mongodb://127.0.0.1:27017/carnet_adresse', (err, database) 
 	if (err) return console.log(err)
 	db = database.db('carnet_adresse')
 	// lancement du serveur Express sur le port 8081
-	app.listen(8081, () => {
+	server.listen(8081, () => {
 		console.log('connexion à la BD et on écoute sur le port 8081')
 	})	
 })
@@ -48,39 +49,39 @@ app.get('/list', function (req, res) {
 })
 
 // ====================== POUR AJOUTER
-// app.post('/ajouter', (req, res) => {
-// 	console.log('req.body' + req.body)
-// 	let oModif;
-// 	 if (req.body['_id'] != '')
-// 	 { 
-// 		console.log('sauvegarde') 
-// 		oModif = {
-// 			"_id": ObjectID(req.body['_id']), 
-// 			nom: req.body.nom,
-// 			prenom:req.body.prenom, 
-// 			telephone:req.body.telephone,
-// 			courriel:req.body.courriel
-// 	 	}
-// 	 let util = require("util");
+app.post('/ajouter', (req, res) => {
+	console.log('req.body' + req.body)
+	let oModif;
+	 if (req.body['_id'] != '')
+	 { 
+		console.log('sauvegarde') 
+		oModif = {
+			"_id": ObjectID(req.body['_id']), 
+			nom: req.body.nom,
+			prenom:req.body.prenom, 
+			telephone:req.body.telephone,
+			courriel:req.body.courriel
+	 	}
+	 let util = require("util");
 
-// 	 }
-// 	 else
-// 	 {
-// 		 console.log('insert')
-// 		 console.log(req.body)
-// 		 oModif = {
-// 		 nom: req.body.nom,
-// 		 prenom:req.body.prenom, 
-// 		 telephone:req.body.telephone,
-// 		 courriel:req.body.courriel
-// 	 	}
-// 	 }
-// 	 db.collection('adresse').save(oModif, (err, result) => {
-// 	 if (err) return console.log(err)
-// 	 console.log('sauvegarder dans la BD')
-// 	 res.redirect('/list')
-// 	 })
-// })
+	 }
+	 else
+	 {
+		 console.log('insert')
+		 console.log(req.body)
+		 oModif = {
+		 nom: req.body.nom,
+		 prenom:req.body.prenom, 
+		 telephone:req.body.telephone,
+		 courriel:req.body.courriel
+	 	}
+	 }
+	 db.collection('adresse').save(oModif, (err, result) => {
+	 if (err) return console.log(err)
+	 console.log('sauvegarder dans la BD')
+	 res.redirect('/list')
+	 })
+})
 
 // =========== POUR DETRUIRE
 app.get('/detruire/:id', (req, res) => {
@@ -188,4 +189,10 @@ app.post('/ajax_modifier', (req,res) => {
   		res.send(JSON.stringify(req.body));
    //res.send(204)
    })
+})
+
+
+app.get('/chat', (req,res) => {
+	console.log('d');
+	res.render('clavadage.ejs')
 })
